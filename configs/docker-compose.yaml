@@ -22,8 +22,8 @@ services:
       - "3000:3000"
     restart: unless-stopped
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin  # Change this in production
-      - GF_SERVER_ROOT_URL=http://<your-ec2-public-ip>:3000
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SERVER_ROOT_URL=http://<ec2-public-ip>:3000
 
 volumes:
   prometheus_data:

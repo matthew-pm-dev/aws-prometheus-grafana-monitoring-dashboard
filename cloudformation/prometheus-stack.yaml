@@ -18,7 +18,7 @@ Parameters:
   GitHubRepoUrl:
     Type: String
     Description: GitHub repository URL for configuration and source files
-    Default: https://github.com/matthew-pm-dev/aws-prometheus-grafana-monitoring-dashboard/main
+    Default: https://raw.githubusercontent.com/matthew-pm-dev/aws-prometheus-grafana-monitoring-dashboard/refs/heads/main/configs/
 
 Resources:
   PrometheusGrafanaSG:
@@ -35,12 +35,16 @@ Resources:
           FromPort: 3000
           ToPort: 3000
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
-
+  
   AppServerSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -50,6 +54,10 @@ Resources:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 9100
@@ -83,8 +91,8 @@ Resources:
           sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
           mkdir monitoring && cd monitoring
-          curl -L "${GitHubRepoUrl}/docker-compose.yaml" -o docker-compose.yaml
-          curl -L "${GitHubRepoUrl}/prometheus.yaml" -o prometheus.yaml
+          curl -L "${GitHubRepoUrl}docker-compose.yaml" -o docker-compose.yaml
+          curl -L "${GitHubRepoUrl}prometheus.yaml" -o prometheus.yaml
           docker-compose up -d
 
   AppServerInstance:
@@ -129,8 +137,8 @@ Resources:
           systemctl enable node-exporter
           # Download files from GitHub
           mkdir -p /etc/myapp
-          curl -L "${GitHubRepoUrl}/config/app-config.yaml" -o /etc/myapp/app-config.yaml
-          curl -L "${GitHubRepoUrl}/source-code.tar.gz" -o /home/ec2-user/source-code.tar.gz
+          curl -L "${GitHubRepoUrl}config/app-config.yaml" -o /etc/myapp/app-config.yaml
+          curl -L "${GitHubRepoUrl}source-code.tar.gz" -o /home/ec2-user/source-code.tar.gz
           tar -xzf /home/ec2-user/source-code.tar.gz -C /home/ec2-user/
 
 Outputs:
