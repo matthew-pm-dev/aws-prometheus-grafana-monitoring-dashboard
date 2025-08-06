@@ -20,6 +20,11 @@ Parameters:
     Description: GitHub repository URL for configuration and source files
     Default: https://raw.githubusercontent.com/matthew-pm-dev/aws-prometheus-grafana-monitoring-dashboard/refs/heads/main/configs/
 
+  EC2User:
+    Type: String
+    Default: ec2-user
+    Description: SSH user for the AMI
+
 Resources:
   PrometheusGrafanaSG:
     Type: AWS::EC2::SecurityGroup
@@ -83,17 +88,19 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          sudo yum update -y
-          sudo yum install docker -y
-          sudo systemctl start docker
-          sudo systemctl enable docker
-          sudo usermod -aG docker $USER
-          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          mkdir monitoring && cd monitoring
+          yum update -y
+          yum install docker -y
+          systemctl start docker
+          systemctl enable docker
+          usermod -aG docker ${EC2User}
+          curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          chmod +x /usr/local/bin/docker-compose
+          mkdir -p /home/${EC2User}/monitoring
+          cd /home/${EC2User}/monitoring
           curl -L "${GitHubRepoUrl}docker-compose.yaml" -o docker-compose.yaml
           curl -L "${GitHubRepoUrl}prometheus.yaml" -o prometheus.yaml
-          docker-compose up -d
+          chown -R ${EC2User}:${EC2User} /home/${EC2User}/monitoring
+          /usr/local/bin/docker-compose up -d
 
   AppServerInstance:
     Type: AWS::EC2::Instance
