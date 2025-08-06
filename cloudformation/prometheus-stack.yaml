@@ -1,0 +1,143 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy EC2 Prometheus/Grafana server and EC2 test app server for node-exporter scraping and custom dashboard demonstration
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC Id
+
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public subnet Id
+
+  LatestAmazonLinuxAMI:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Description: Latest Amazon Linux 2 AMI
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+
+  GitHubRepoUrl:
+    Type: String
+    Description: GitHub repository URL for configuration and source files
+    Default: https://github.com/matthew-pm-dev/aws-prometheus-grafana-monitoring-dashboard/main
+
+Resources:
+  PrometheusGrafanaSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Prometheus/Grafana server
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 9090
+          ToPort: 9090
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  AppServerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for App server
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 9100
+          ToPort: 9100
+          SourceSecurityGroupId: !Ref PrometheusGrafanaSG
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  PrometheusGrafanaInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: !Ref LatestAmazonLinuxAMI
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref PrometheusGrafanaSG
+      Tags:
+        - Key: Name
+          Value: mpm-prometheus-grafana-server
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          sudo yum update -y
+          sudo yum install docker -y
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          sudo usermod -aG docker $USER
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          mkdir monitoring && cd monitoring
+          curl -L "${GitHubRepoUrl}/docker-compose.yaml" -o docker-compose.yaml
+          curl -L "${GitHubRepoUrl}/prometheus.yaml" -o prometheus.yaml
+          docker-compose up -d
+
+  AppServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: !Ref LatestAmazonLinuxAMI
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref AppServerSG
+      Tags:
+        - Key: Name
+          Value: mpm-app-server
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          # Install dependencies and Prometheus Node Exporter
+          yum install -y wget
+          wget https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
+          tar xvfz node_exporter-1.8.2.linux-amd64.tar.gz
+          mv node_exporter-1.8.2.linux-amd64/node_exporter /usr/local/bin/
+          useradd -rs /bin/false node_exporter
+          # Create systemd service for Node Exporter
+          cat <<EOF > /etc/systemd/system/node-exporter.service
+          [Unit]
+          Description=Prometheus Node Exporter
+          After=network.target
+
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter --web.listen-address=:9100
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+          # Start and enable Node Exporter service
+          systemctl daemon-reload
+          systemctl start node-exporter
+          systemctl enable node-exporter
+          # Download files from GitHub
+          mkdir -p /etc/myapp
+          curl -L "${GitHubRepoUrl}/config/app-config.yaml" -o /etc/myapp/app-config.yaml
+          curl -L "${GitHubRepoUrl}/source-code.tar.gz" -o /home/ec2-user/source-code.tar.gz
+          tar -xzf /home/ec2-user/source-code.tar.gz -C /home/ec2-user/
+
+Outputs:
+  PrometheusGrafanaInstanceId:
+    Description: Instance ID of the Prometheus/Grafana server
+    Value: !Ref PrometheusGrafanaInstance
+
+  AppServerInstanceId:
+    Description: Instance ID of the App server
+    Value: !Ref AppServerInstance
