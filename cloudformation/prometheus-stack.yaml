@@ -15,10 +15,15 @@ Parameters:
     Description: Latest Amazon Linux 2 AMI
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
 
+  NodeExporterVersion:
+    Type: String
+    Description: Version of Node Exporter
+    Default: 1.9.1
+
   GitHubRepoUrl:
     Type: String
     Description: GitHub repository URL for configuration and source files
-    Default: https://raw.githubusercontent.com/matthew-pm-dev/aws-prometheus-grafana-monitoring-dashboard/refs/heads/main/configs/
+    Default: https://raw.githubusercontent.com/matthew-pm-dev/aws-prometheus-grafana-monitoring-dashboard/refs/heads/main/
 
   EC2User:
     Type: String
@@ -97,8 +102,8 @@ Resources:
           chmod +x /usr/local/bin/docker-compose
           mkdir -p /home/${EC2User}/monitoring
           cd /home/${EC2User}/monitoring
-          curl -L "${GitHubRepoUrl}docker-compose.yaml" -o docker-compose.yaml
-          curl -L "${GitHubRepoUrl}prometheus.yaml" -o prometheus.yaml
+          curl -L "${GitHubRepoUrl}configs/docker-compose.yaml" -o docker-compose.yaml
+          curl -L "${GitHubRepoUrl}configs/prometheus.yaml" -o prometheus.yaml
           chown -R ${EC2User}:${EC2User} /home/${EC2User}/monitoring
           /usr/local/bin/docker-compose up -d
 
@@ -116,35 +121,21 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          # Install dependencies and Prometheus Node Exporter
+          # download and unpack node-exporter
           yum install -y wget
-          wget https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
-          tar xvfz node_exporter-1.8.2.linux-amd64.tar.gz
-          mv node_exporter-1.8.2.linux-amd64/node_exporter /usr/local/bin/
+          wget https://github.com/prometheus/node_exporter/releases/download/v${NodeExporterVersion}/node_exporter-${NodeExporterVersion}.linux-amd64.tar.gz
+          tar xvfz node_exporter-${NodeExporterVersion}.linux-amd64.tar.gz
+          mv node_exporter-${NodeExporterVersion}.linux-amd64/node_exporter /usr/local/bin/
+          rm -rf node_exporter-${NodeExporterVersion}.linux-amd64 node_exporter-${NodeExporterVersion}.linux-amd64.tar.gz
           useradd -rs /bin/false node_exporter
-          # Create systemd service for Node Exporter
-          cat <<EOF > /etc/systemd/system/node-exporter.service
-          [Unit]
-          Description=Prometheus Node Exporter
-          After=network.target
-
-          [Service]
-          User=node_exporter
-          Group=node_exporter
-          Type=simple
-          ExecStart=/usr/local/bin/node_exporter --web.listen-address=:9100
-          Restart=always
-
-          [Install]
-          WantedBy=multi-user.target
-          EOF
-          # Start and enable Node Exporter service
+          # create and start node-exporter service
+          curl -L "${GitHubRepoUrl}configs/node-exporter.service" -o /etc/systemd/system/node-exporter.service
           systemctl daemon-reload
           systemctl start node-exporter
           systemctl enable node-exporter
-          # Download files from GitHub
+          # download app config and source code files
           mkdir -p /etc/myapp
-          curl -L "${GitHubRepoUrl}config/app-config.yaml" -o /etc/myapp/app-config.yaml
+          curl -L "${GitHubRepoUrl}configs/app-config.yaml" -o /etc/myapp/app-config.yaml
           curl -L "${GitHubRepoUrl}source-code.tar.gz" -o /home/ec2-user/source-code.tar.gz
           tar -xzf /home/ec2-user/source-code.tar.gz -C /home/ec2-user/
 
