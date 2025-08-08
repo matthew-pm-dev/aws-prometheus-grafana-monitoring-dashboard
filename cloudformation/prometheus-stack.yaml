@@ -85,7 +85,6 @@ Resources:
 
   PrometheusGrafanaInstance:
     Type: AWS::EC2::Instance
-    DependsOn: AppServerInstance
     Properties:
       InstanceType: t2.micro
       ImageId: !Ref LatestAmazonLinuxAMI
