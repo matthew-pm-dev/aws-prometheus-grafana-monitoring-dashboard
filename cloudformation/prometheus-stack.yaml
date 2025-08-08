@@ -85,6 +85,7 @@ Resources:
 
   PrometheusGrafanaInstance:
     Type: AWS::EC2::Instance
+    DependsOn: AppServerInstance
     Properties:
       InstanceType: t2.micro
       ImageId: !Ref LatestAmazonLinuxAMI
@@ -108,6 +109,7 @@ Resources:
           cd /home/${EC2User}/monitoring
           curl -L "${GitHubRepoUrl}configs/docker-compose.yaml" -o docker-compose.yaml
           curl -L "${GitHubRepoUrl}configs/prometheus.yaml" -o prometheus.yaml
+          sed -i "s/<node-exporter-host>/${AppServerInstance.PrivateIp}/" prometheus.yaml
           chown -R ${EC2User}:${EC2User} /home/${EC2User}/monitoring
           /usr/local/bin/docker-compose up -d
 
