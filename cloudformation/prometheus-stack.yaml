@@ -104,11 +104,15 @@ Resources:
           usermod -aG docker ${EC2User}
           curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           chmod +x /usr/local/bin/docker-compose
-          mkdir -p /home/${EC2User}/monitoring
+          mkdir -p /home/${EC2User}/monitoring/dashboards
           cd /home/${EC2User}/monitoring
           curl -L "${GitHubRepoUrl}configs/docker-compose.yaml" -o docker-compose.yaml
           curl -L "${GitHubRepoUrl}configs/prometheus.yaml" -o prometheus.yaml
+          curl -L "${GitHubRepoUrl}configs/prometheus-datasource.yaml" -o prometheus-datasource.yaml
+          curl -L "${GitHubRepoUrl}configs/dashboard-provider.yaml" -o dashboard-provider.yaml
+          curl -L "${GitHubRepoUrl}configs/node-dashboard.json" -o ./dashboards/node-dashboard.json
           sed -i "s/<node-exporter-host>/${AppServerInstance.PrivateIp}/" prometheus.yaml
+          sed -i "s/<ec2-public-ip>/$(curl -s http://169.254.169.254/latest/meta-data/public-hostname)/g" docker-compose.yaml
           chown -R ${EC2User}:${EC2User} /home/${EC2User}/monitoring
           /usr/local/bin/docker-compose up -d
 
@@ -141,8 +145,8 @@ Resources:
           # download app config and source code files
           mkdir -p /etc/myapp
           curl -L "${GitHubRepoUrl}configs/app-config.yaml" -o /etc/myapp/app-config.yaml
-          curl -L "${GitHubRepoUrl}source-code.tar.gz" -o /home/ec2-user/source-code.tar.gz
-          tar -xzf /home/ec2-user/source-code.tar.gz -C /home/ec2-user/
+          curl -L "${GitHubRepoUrl}source-code.tar.gz" -o ./source-code.tar.gz
+          tar -xzf ./source-code.tar.gz -C .
 
 Outputs:
   PrometheusGrafanaInstanceId:
