@@ -17,13 +17,19 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     volumes:
+      - ./prometheus-datasource.yaml:/etc/grafana/provisioning/datasources/prometheus-datasource.yaml
+      - ./dashboards:/var/lib/grafana/dashboards
+      - ./dashboard-provider.yaml:/etc/grafana/provisioning/dashboards/dashboard-provider.yaml
       - grafana_data:/var/lib/grafana
     ports:
       - "3000:3000"
     restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=false
       - GF_SERVER_ROOT_URL=http://<ec2-public-ip>:3000
+    depends_on:
+      - prometheus
 
 volumes:
   prometheus_data:
