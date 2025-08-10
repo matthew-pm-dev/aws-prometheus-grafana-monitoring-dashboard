@@ -13,12 +13,12 @@ As a personal project to build practical experience, this setup showcases skills
 - **AWS Services**: CloudFormation for IaC, EC2 instances, Security Groups, SSM Parameter Store for AMI resolution.
 - **Automation & Scripting**: Bash user data scripts for EC2 bootstrap, dynamic replacement of placeholders (e.g., IP addresses, data source UIDs), API calls to Grafana for provisioning reloads.
 - **Containerization**: Docker and Docker Compose for running Prometheus and Grafana.
-- **Custom Features**: A test Python app (`metrics-generator.py`) to simulate CPU usage and HTTP requests, providing verifiable data for the custom Grafana dashboard (`node-dashboard.json`).
+- **Custom Features**: A test Python app to simulate CPU usage and HTTP requests, providing verifiable data for the Grafana dashboard.
 - **Dynamic Configuration**: Scripts to fetch Grafana data source UIDs post-deployment and inject them into the dashboard JSON, ensuring seamless integration.
 
 ### Architecture
-- **Prometheus/Grafana Server (EC2 Instance)**: Hosts Prometheus and Grafana in Docker containers. User data script installs Docker, downloads configs from this repo, replaces placeholders (e.g., node IP, public hostname), starts containers, and dynamically updates the dashboard with the correct data source UID.
-- **App Server (EC2 Instance)**: Runs Node Exporter for metrics exposure and a custom Python script to generate test load (CPU/HTTP metrics). Scraped by Prometheus.
+- **Prometheus/Grafana Server (EC2 Instance)**: Hosts Prometheus and Grafana in Docker containers. User data script installs Docker, downloads configs from this repo, replaces placeholders, starts containers, and dynamically updates the dashboard with the correct data source UID.
+- **App Server (EC2 Instance)**: Runs Node Exporter for metrics exposure and a custom Python script to generate test load for Prometheus to scrape.
 - **Security**: Separate security groups for each instance, allowing Prometheus to scrape Node Exporter (port 9100) and public access to Prometheus (9090) and Grafana (3000).
 - **Provisioning Flow**:
   1. CloudFormation deploys EC2 instances.
@@ -38,11 +38,11 @@ To deploy (tested on AWS):
 
 To enhance the project’s alignment with AWS best practices and production readiness, the following improvements are planned:
 
-- **Switch to `cfn-init` for Configuration Management**: Replace the EC2 user data scripts with AWS CloudFormation Init (`cfn-init`) to provide a more robust and modular way to configure the Prometheus/Grafana and app servers. This will improve maintainability by separating configuration logic from instance bootstrap and enable easier updates to the setup.
-- **Host Configuration Files on AWS S3**: Move configuration files (e.g., `docker-compose.yaml`, `prometheus.yaml`, `node-dashboard.json`) from the GitHub repository to an S3 bucket with versioning and access controls. This leverages AWS-native storage, improves security, and reduces external dependencies.
-- **Automate Authentication and Security with AWS Secrets Manager**: Replace hardcoded credentials (e.g., Grafana’s default `admin:admin`) with AWS Secrets Manager for secure storage and retrieval. Integrate Secrets Manager with `cfn-init` scripts to dynamically configure authentication, enhancing security for Prometheus and Grafana access.
+- **Switch to cfn-init for Configuration Management**: Replace the EC2 user data scripts with cfn-init to provide a more robust and modular way to configure the Prometheus/Grafana and app servers. This will improve maintainability by separating configuration logic from instance bootstrap and enable easier updates to the setup.
+- **Host Configuration Files on AWS S3**: Move configuration files from the GitHub repository to an S3 bucket with versioning and access controls. This leverages AWS-native storage, improves security, and reduces external dependencies.
+- **Automate Authentication and Security with AWS Secrets Manager**: Replace hardcoded default credentials with AWS Secrets Manager for secure storage and retrieval. Integrate Secrets Manager with cfn-init scripts to dynamically configure authentication, enhancing security for Prometheus and Grafana access.
 - **Add Auto Scaling for Resilience**: Introduce an Auto Scaling group for the Prometheus/Grafana EC2 instance to ensure high availability and automatic recovery from instance failures. This will demonstrate scalable architecture design and improve system reliability.
-- **Implement CloudWatch Monitoring**: Set up CloudWatch alarms to monitor EC2 instance health (e.g., CPU utilization, instance status) and configure SNS notifications for alerts. This will enhance observability and integrate AWS-native monitoring with the Prometheus/Grafana stack.
+- **Implement CloudWatch Monitoring**: Set up CloudWatch alarms to monitor EC2 instance health and configure SNS notifications for alerts. This will enhance observability and integrate AWS-native monitoring with the Prometheus/Grafana stack.
 
 These enhancements will make the project more robust, secure, and aligned with AWS best practices, preparing it for production-like environments.
 
