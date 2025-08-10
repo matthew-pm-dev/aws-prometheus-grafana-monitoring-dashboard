@@ -99,6 +99,7 @@ Resources:
           #!/bin/bash
           yum update -y
           yum install docker -y
+          yum install -y jq
           systemctl start docker
           systemctl enable docker
           usermod -aG docker ${EC2User}
@@ -111,10 +112,15 @@ Resources:
           curl -L "${GitHubRepoUrl}configs/prometheus-datasource.yaml" -o prometheus-datasource.yaml
           curl -L "${GitHubRepoUrl}configs/dashboard-provider.yaml" -o dashboard-provider.yaml
           curl -L "${GitHubRepoUrl}configs/node-dashboard.json" -o ./dashboards/node-dashboard.json
+          curl -L "${GitHubRepoUrl}configs/get-grafana-datasource.sh" -o get-grafana-datasource.sh
           sed -i "s/<node-exporter-host>/${AppServerInstance.PrivateIp}/" prometheus.yaml
           sed -i "s/<ec2-public-ip>/$(curl -s http://169.254.169.254/latest/meta-data/public-hostname)/g" docker-compose.yaml
           chown -R ${EC2User}:${EC2User} /home/${EC2User}/monitoring
           /usr/local/bin/docker-compose up -d
+          PROM_UID=$(./get-grafana-datasource.sh Prometheus)
+          sed -i "s/<datasource-uid>/$PROM_UID/g" ./dashboards/node-dashboard.json
+          docker cp ./dashboards/node-dashboard.json grafana:/var/lib/grafana/dashboards/node-dashboard.json
+          curl -s -X POST -u admin:admin http://localhost:3000/api/admin/provisioning/dashboards/reload
 
   AppServerInstance:
     Type: AWS::EC2::Instance
