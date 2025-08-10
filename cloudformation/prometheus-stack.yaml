@@ -149,10 +149,10 @@ Resources:
           systemctl start node-exporter
           systemctl enable node-exporter
           # download app config and source code files
-          mkdir -p /etc/myapp
-          curl -L "${GitHubRepoUrl}configs/app-config.yaml" -o /etc/myapp/app-config.yaml
-          curl -L "${GitHubRepoUrl}source-code.tar.gz" -o ./source-code.tar.gz
-          tar -xzf ./source-code.tar.gz -C .
+          # mkdir -p /etc/myapp
+          # curl -L "${GitHubRepoUrl}configs/app-config.yaml" -o /etc/myapp/app-config.yaml
+          # curl -L "${GitHubRepoUrl}source-code.tar.gz" -o ./source-code.tar.gz
+          # tar -xzf ./source-code.tar.gz -C .
 
 Outputs:
   PrometheusGrafanaInstanceId:
